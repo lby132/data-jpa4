@@ -3,13 +3,13 @@ package study.datajpa4.repository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import study.datajpa4.dto.MemberDto;
 import study.datajpa4.entity.Member;
 
+import javax.persistence.LockModeType;
+import javax.persistence.QueryHint;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,4 +53,26 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query("update Member m set m.age = m.age + 1 where m.age >= :age")
     int bulkAgePlus(@Param("age") int age);
 
+    @Query("select m from Member m left join fetch m.team")
+    List<Member> findMemberFetchJoin();
+
+    @Override
+    @EntityGraph(attributePaths = {"team"})
+    List<Member> findAll();
+
+    @EntityGraph(attributePaths = {"team"})
+//    @EntityGraph("Member.all") // NamedEntityGraph
+    List<Member> findEntityGraphByUsername(@Param("username") String username);
+
+    //sql 힌트가 아니라 jpa 구현체에게 알려주는 힌트.
+    //jpa 쿼리를 날릴때 하이버네이트에게 알려주는 힌트. jpa 구현체의 기능을 사용하고 싶을때 hint를 알려줘서 구현을 하는것.
+    //이 상황은 하이버네이트에게 @QueryHint 로 readonly true 하겠다고 설정한 것
+    @QueryHints(value = @QueryHint(name = "org.hibernate.readOnly", value = "true"))
+    Member findReadOnlyByUsername(String username);
+
+    //비관적인 락 조회시 다른곳에서 손대지 못하게 락을 걸어준다. (돈을 맞출때 등등 사용, 트래픽 많은곳에서는 절대 사용X)
+    //JPA가 LockModeType.PESSIMISTIC_WRITE 같은 락을 제공하고 spring data jpa가 이 락을 편하게 쓸 수 있게 @Lock를 제공한다.
+    //select 쿼리가 나갈때 마지막에 for update 가 같이 붙어서 쿼리가 나가면서 락이 걸림
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<Member> findLockByUsername(String username);
 }

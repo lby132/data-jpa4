@@ -1,9 +1,15 @@
 package study.datajpa4.entity;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
+import study.datajpa4.repository.MemberRepository;
+import study.datajpa4.repository.MemberRepositoryCustom;
+import study.datajpa4.repository.MemberRepositoryImpl;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
@@ -12,16 +18,19 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Transactional
+@Rollback(false)
 @SpringBootTest
 class MemberTest {
 
-    @PersistenceContext
+    @Autowired
     EntityManager em;
+
+    @Autowired
+    MemberRepository memberRepository;
 
 
     @Test
-    @Transactional
-    @Rollback(false)
     public void testEntity() {
         Team teamA = new Team("teamA");
         Team teamB = new Team("teamB");
@@ -49,5 +58,30 @@ class MemberTest {
             System.out.println("-> member.team=" + member.getTeam().getName());
         }
     }
+
+    @Test
+    void JpaEventBasicEntity() throws Exception {
+        //given
+        Member member = new Member("member1");
+
+        memberRepository.save(member);
+
+        Thread.sleep(100);
+        member.setUsername("member2");
+
+        em.flush();
+        em.clear();
+
+        //when
+        Member findMember = memberRepository.findById(member.getId()).get();
+
+        //then
+        System.out.println("findMember.getCreatedDate() = " + findMember.getCreateDate());
+        System.out.println("findMember.getUpdatedDate() = " + findMember.getLastModifiedDate());
+        System.out.println("findMember.getc = " + findMember.getCreateBy());
+        System.out.println("findMember.getLastModifiedBy() = " + findMember.getLastModifiedBy());
+    }
+
+
 
 }
